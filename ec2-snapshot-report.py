@@ -10,7 +10,7 @@ import boto3
 import os
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from botocore.exceptions import ClientError
 import tempfile
@@ -30,8 +30,7 @@ os.environ['AWS_DEFAULT_REGION'] = "eu-west-1"
 timestr = time.strftime("%Y%m%d-%H%M%S")
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-now=datetime.utcnow()
-nownaive = now.replace(tzinfo=None)
+now=datetime.now(timezone.utc)
 
 def get_snapshots(region):
     """
@@ -59,9 +58,8 @@ def get_volumes(InstanceId,region,VolumeID):
     for page in response_iterator:
         for volume in page['Volumes']:
              # calculating volume age
-             voldatenaive = volume['CreateTime'].replace(tzinfo=None)
-        delta=nownaive-voldatenaive
-        VolumeAge = delta.days
+             voldate = volume['CreateTime']
+        VolumeAge=now-voldate
         # filtering snapshots by VolumeID
         FilteredSnapshots = [x for x in snapshots if x['VolumeId'] == volume['VolumeId']]
         return VolumeAge, len(FilteredSnapshots)
@@ -90,7 +88,7 @@ def get_ec2(region):
                         'Region': region,
                         'InstanceName': InstanceName,
                         'VolumeID': Volume['Ebs']['VolumeId'],
-                        'VolAge': VolumeAge,
+                        'VolAge': str(VolumeAge).split(".")[0],
                         'SnapshotCount': SnapshotsCount,
                         'AccountName': AccountName
                         })
